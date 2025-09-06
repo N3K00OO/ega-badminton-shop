@@ -1,5 +1,5 @@
 """
-WSGI config for ega_badminton_shop project.
+WSGI config for toko_bola_ega project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ega_badminton_shop.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'toko_bola_ega.settings')
 
 application = get_wsgi_application()
