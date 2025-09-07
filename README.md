@@ -107,7 +107,7 @@ Berikut diagram sederhana :
       <html>
       <head><meta charset="utf-8"><title>{{ app_name }}</title></head>
       <body>
-         <h1>{{ app_name|title }}</h1>
+         <h1>{{ my_app_name|title }}</h1>
          <p>Nama: {{ my_name }}</p>
          <p>Kelas: {{ pbp_class }}</p>
       </body>
