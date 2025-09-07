@@ -7,7 +7,8 @@ class Product(models.Model):
     description =  models.TextField()
     thumbnails  = models.URLField()
     category =  models.CharField(max_length=100)
-    is_featurted = models.BooleanField(default=False)
+    is_featured = models.BooleanField(default=False)
+    brand = models.CharField(max_length=50, default="Unknown")
 
 def __str__(self):
     return f"{self.name}({self.category})"
