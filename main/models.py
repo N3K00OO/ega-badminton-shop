@@ -10,8 +10,8 @@ class Product(models.Model):
     is_featured = models.BooleanField(default=False)
     brand = models.CharField(max_length=50, default="Unknown")
 
-def __str__(self):
-    return f"{self.name}({self.category})"
+    def __str__(self):
+        return f"{self.name}({self.category})"
 
 
 # Create your models here.
