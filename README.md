@@ -1,7 +1,7 @@
 # Football Shop - Toko Sepatu Bola
 
 ## Link Aplikasi yang Sudah Di-Deploy
-Aplikasi Football Shop saya dapat diakses di: https://pbp.cs.ui.ac.id/gregorius.ega/tokobolaega
+Aplikasi Football Shop saya dapat diakses di:[ https://pbp.cs.ui.ac.id/gregorius.ega/tokobolaega](https://gregorius-ega-tokobolaega.pbp.cs.ui.ac.id/)
 Nama Aplikasi: Toko Bola Ega 
 Nama: Gregorius Ega Aditama Sudjali
 Kelas: PBP C
