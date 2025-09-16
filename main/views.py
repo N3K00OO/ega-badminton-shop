@@ -8,7 +8,13 @@ from main.models import Product
 
 def show_main(request):
     products = Product.objects.all()
-    context = {"products": products}
+    student = {
+                "title": "Football News",
+                "npm": "2406434153",  
+                "name": "Gregorius Ega Aditama Sudjali",
+                "kelas": "PBP C",
+                }
+    context = {"products": products, "student": student}
     return render(request, "main/main.html", context)
 
 
