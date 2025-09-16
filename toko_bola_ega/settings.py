@@ -28,7 +28,14 @@ SECRET_KEY = 'django-insecure-_4m*r&8wr)v6@mt=8mdyz4jq)8)9)%$a84holbk^%#ukivcpi+
 PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
 DEBUG = True
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://gregorius-ega-tokobolaega.pbp.cs.ui.ac.id",
+]
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "gregorius-ega-tokobolaega.pbp.cs.ui.ac.id"]
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
 
 
 # Application definition
