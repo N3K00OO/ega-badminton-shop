@@ -1,5 +1,7 @@
 # Football Shop - Toko Sepatu Bola
 
+## `README.md` tugas 3 Dibawah
+
 ## Link Aplikasi yang Sudah Di-Deploy
 Aplikasi Football Shop saya dapat diakses di: https://pbp.cs.ui.ac.id/gregorius.ega/tokobolaega
 Nama Aplikasi: Toko Bola Ega 
@@ -39,11 +41,11 @@ Saya mengimplementasikan checklist tugas secara bertahap, dengan menyesuaikan te
            'nama': '[Nama Mahasiswa]',
            'kelas': '[Kelas Mahasiswa]'
        }
-       return render(request, 'main/home.html', ctx)
+       return render(request, 'main/main.html', ctx)
    ```  
    Ini mengirimkan context ke template tanpa model data dulu, untuk halaman sederhana.
 
-6. **Membuat routing pada `urls.py` aplikasi `main` untuk memetakan fungsi `home` pada `views.py`**:  
+6. **Membuat routing pada `urls.py` aplikasi `main` untuk memetakan fungsi `main` pada `views.py`**:  
    Di `main/urls.py`, impor `path` dan `views`, lalu tambahkan routing berikut:  
 
    ```python
@@ -51,7 +53,7 @@ Saya mengimplementasikan checklist tugas secara bertahap, dengan menyesuaikan te
    from . import views
 
    urlpatterns = [
-       path("", views.home, name="home"),
+       path("", views.main, name="main"),
    ]
 
 7. **Melakukan deployment ke PWS terhadap aplikasi yang sudah dibuat**:  
@@ -63,9 +65,6 @@ Saya mengimplementasikan checklist tugas secara bertahap, dengan menyesuaikan te
    git push origin master
    git push pws master
    ```
-
-
-
 
 ### 2. Buatlah bagan yang berisi request client ke web aplikasi berbasis Django beserta responnya dan jelaskan pada bagan tersebut kaitan antara urls.py, views.py, models.py, dan berkas html.
 Berikut diagram sederhana :
@@ -79,11 +78,11 @@ Berikut diagram sederhana :
 - **`urls.py` (level proyek & app)**
   - Pintu masuk request. Memetakan URL dari client ke fungsi view yang tepat.
   - Contoh (project): `path("", include("main.urls"))`
-  - Contoh (app): `path("", views.home, name="home")`
+  - Contoh (app): `path("", views.main, name="main")`
 
 - **`views.py`**
   - Jembatan utama MVT: menerima request dari `urls.py`, ambil/olah data (via `models.py` bila perlu), lalu merender template.
-  - Contoh: `return render(request, "main/home.html", {"products": Product.objects.all()})`
+  - Contoh: `return render(request, "main/main.html", {"products": Product.objects.all()})`
 
 - **`models.py`**
   - Definisi struktur data & akses database lewat ORM (CRUD).
@@ -149,3 +148,68 @@ Meski "batteries-included" bisa overwhelming, ia bangun fondasi solid sebelum ek
 
 ### 6. Apakah ada feedback untuk asisten dosen tutorial 1 yang telah kamu kerjakan sebelumnya?
 Ya, tutorial 1 sangat membantu untuk memahami MVT dasar, terutama contoh alur request-response. Namun, bisa ditambahkan lebih banyak contoh error handling (e.g., 404 di views) dan integrasi static files lebih awal, karena sering bingung saat deploy. Secara keseluruhan, jelas dan step-by-step, terima kasih Tim Ados dan Tim Dosen :D
+
+
+# `README.md` tugas 3
+### 1. Mengapa kita memerlukan data delivery dalam pengimplementasian sebuah platform?
+Data delivery diperlukan untuk memastikan data dapat dikirim dan diterima dengan baik antara server dan klien, mendukung integrasi sistem, dan memastikan komunikasi yang efisien.
+
+#### Manfaat Utama 
+- **Reliabilitas & ketahanan** — Antrian jadi buffer untuk menyerap lonjakan dan mencegah timeout/kehilangan pesan; ketersediaan layanan meningkat.  (Microsoft, 2025)
+- **Decoupling & integrasi mudah** — Pub/Sub **memisahkan** pengirim dari penerima; tim bisa mengembangkan layanan secara mandiri.  (Google Cloud, 2025)
+- **Performa & skalabilitas** — Pola “queue-based load leveling” **meratakan beban** agar layanan hilir tidak kewalahan saat traffic spike.  (Microsoft, 2025)
+
+### 2. Mana yang lebih baik antara XML dan JSON? Mengapa JSON lebih populer dibandingkan XML?
+Sebetulnya tergantung pemakaian tidak ada yang `Lebih unggul` tergantung pemakaianya saja.
+
+JSON umumnya lebih baik untuk API modern, aplikasi web/mobile, dan pertukaran data antar-layanan karena sintaksnya ringkas, mudah dibaca/di-parse, dan sudah “bawaan” JavaScript. (Ecma International, 2017)
+
+XML masih unggul untuk data/berkas yang “dokumen-sentris” (e.g. punya mixed content), perlu skema dan validasi ketat (XSD), atau transformasi dokumen (XSLT) (W3C, 2008; W3C, 2017)
+
+### 3. Jelaskan fungsi dari method is_valid() pada form Django dan mengapa kita membutuhkan method tersebut?
+Method __validId() digunakan untuk memvalidasi ID yang dimasukkan dalam form agar sesuai dengan aturan tertentu, mencegah input yang tidak valid masuk ke database.
+
+### 4. Mengapa kita membutuhkan csrf_token di form Django, dan apa risikonya jika tidak ada?
+Kita membutuhkan `{% csrf_token %}` untuk mencegah **Cross-Site Request Forgery (CSRF)**: ketika pengguna sedang login, browser otomatis menyertakan **cookie sesi** pada permintaan lintas situs; tanpa token acak yang diverifikasi server (melalui `CsrfViewMiddleware`) dan pemeriksaan asal (Origin/Referer serta `CSRF_TRUSTED_ORIGINS`), aplikasi tidak dapat membedakan permintaan sah dari yang dipalsukan. Jika token tidak ada, penyerang dapat menanam **form tersembunyi** atau skrip di situs mereka yang mengirim **POST berbahaya** (mis. ubah email/sandi, tambah admin, transaksi) menggunakan kredensial korban sehingga server keliru menganggapnya valid; atribut cookie **`SameSite`** membantu mengurangi sebagian risiko, namun **bukan pengganti** token—praktik terbaiknya tetap menyertakan `csrf_token` pada setiap form POST dan mengirimnya via header `X-CSRFToken` untuk AJAX. (Django Docs, 2025; MDN Web Docs, 2025; OWASP, n.d.)
+
+### 5. Jelaskan bagaimana cara kamu mengimplementasikan checklist di atas secara step-by-step (bukan hanya sekadar mengikuti tutorial).
+
+**a.** Buat **halaman form** agar pengguna bisa menambahkan objek baru dengan field yang diperlukan.  
+**b.** Tambahkan **dua view** terpisah: satu untuk **membuat objek** (GET/POST) dan satu untuk **menampilkan detail** objek; sediakan **dua template HTML** masing-masing untuk form dan detail.  
+**c.** Perbarui `main.html` untuk menampilkan **daftar objek** dan **tombol aksi**, lalu tautkan tiap tombol/tautan ke view terkait menggunakan **reverse URL** (`{% url 'nama-view' arg %}`).  
+**d.** Implementasikan **data delivery**: buat view yang mengembalikan **XML** dan **JSON** untuk **seluruh data** maupun **berdasarkan ID**, lalu daftarkan **routing**-nya di `urls.py`.  
+**e.** Lakukan **uji manual**: jalankan server lokal (`python manage.py runserver`) dan akses endpoint di **localhost** untuk memastikan semuanya berfungsi.  
+**f.** **Terakhir**, lakukan **deploy ke PWS**, pastikan konfigurasi (mis. `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`) sudah benar.
+
+## Postman Screen Shoot
+![alt text](json.png)
+![alt text](jsonID.png)
+![alt text](xml.png)
+![alt text](xmlID.png)
+
+###  Apakah ada feedback untuk asdos di tutorial 2 yang sudah kalian kerjakan?
+saya ingin tutorial lebih inetraktif/diberi materi sebelum mengerjakan tutorial
+
+## sources
+Microsoft. (n.d.). Queue-based load leveling pattern (Azure Architecture Center). https://learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling. (Diakses 16 September 2025).
+
+Google Cloud. (n.d.). What is Pub/Sub? (Overview). https://cloud.google.com/pubsub/docs/overview. (Diakses 16 September 2025).
+
+W3C. (2008). Extensible Markup Language (XML) 1.0 (Fifth Edition)
+
+Ecma International. (2017). ECMA-404: The JSON Data Interchange Syntax (2nd ed.)
+
+W3C. (2017). XSL Transformations (XSLT) Version 3.0.
+Django Software Foundation. (n.d.). *Cross site request forgery (CSRF) protection*. https://docs.djangoproject.com/en/5.2/ref/csrf/ (Diakses 16 September 2025)
+
+Django Software Foundation. (n.d.). *How to use Django’s CSRF protection*. https://docs.djangoproject.com/en/5.2/howto/csrf/ (Diakses 16 September 2025)
+
+Django Software Foundation. (n.d.). *Settings: CSRF_TRUSTED_ORIGINS*. https://docs.djangoproject.com/en/5.2/ref/settings/ (Diakses 16 September 2025)
+
+Mozilla. (2025, September 1). *Using HTTP cookies*. MDN Web Docs. https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies
+
+Mozilla. (2025, June 7). *Cross-site request forgery (CSRF)*. MDN Web Docs. https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/CSRF
+
+OWASP Foundation. (n.d.). *Cross-Site Request Forgery (CSRF) Prevention Cheat Sheet*. OWASP Cheat Sheet Series. https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
+
+OWASP Foundation. (n.d.). *SameSite*. https://owasp.org/www-community/SameSite
