@@ -69,9 +69,9 @@ Saya mengimplementasikan checklist tugas secara bertahap, dengan menyesuaikan te
 ### 2. Buatlah bagan yang berisi request client ke web aplikasi berbasis Django beserta responnya dan jelaskan pada bagan tersebut kaitan antara urls.py, views.py, models.py, dan berkas html.
 Berikut diagram sederhana :
 
-![alt text](NP5FJm8n4CNlJVeT9djQ4rZHemV5254Z18EBdflT2LJxPssdAD_UsLr0mgL9fw-_zruxZgG29MkaY5_QDIee2zOxNss2jmWK4af1cWp2lKa19YegNZ-LMtl8oxHM4Qukf912LUG3F1YDZgHW4kbADyeHP2cOM3Ix35YyMixUpewt6d-Ev-_FquzpWVKr_XFcYycqPLJU6An8UnSX8xI.png)
+![alt text](django.png)
 
-![alt text](TOun3i8m34NtIBc3HnZQ8w0Eh4mWbeh1K4kDQYUHuu2uFIL8CB7zf_U6FnH3jIhiNLb2pAWe82ccswn924mhUMV1cE2umc9L0GxdatVUZLMvzFbvWQxRmNWFz6Yuck_-A4aJyHzd99dHg9zD-Er_SGisUpIyOg6jTmF5gPrz0G00.png)
+![alt text](django2.png)
 
 ### Penjelasan Kaitan Komponen (MVT)
 
