@@ -3,12 +3,28 @@
 {% include 'main/student_info.html' %}
 <h1>Product Catalog</h1>
 
+<div class="filters" style="margin: 8px 0;">
+  <a href="?filter=all"><button type="button">All Products</button></a>
+  <a href="?filter=my"><button type="button">My Products</button></a>
+</div>
+
+
 <p>
+  <a href="{% url 'main:logout' %}">
+    <button>Logout</button>
+  </a>
+  
+  <a href="{% url 'main:login' %}">
+    <button>Login</button>
+  </a>
+
   <a href="{% url 'main:create_product' %}">
     <button>+ Add Product</button>
   </a>
 </p>
 
+<hr>
+<h5>Sesi terakhir login: {{ last_login }}</h5>
 <hr>
 
 {% if not products %}
@@ -32,6 +48,7 @@
       <p>
         <a href="{% url 'main:show_product' p.id %}"><button>Detail</button></a>
       </p>
+     
     </div>
     <hr>
   {% endfor %}

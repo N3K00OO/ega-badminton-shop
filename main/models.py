@@ -1,9 +1,12 @@
 from django.db import models
 import uuid
+from django.contrib.auth.models import User
 
 
 
 class Product(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    
     id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False
     )
@@ -16,6 +19,8 @@ class Product(models.Model):
     brand = models.CharField(max_length=50, default="Unknown")
     created_at = models.DateTimeField(auto_now_add=True)
     views = models.PositiveIntegerField(default=0)
+    
+
 
     def increment_views(self):
         self.views = (self.views or 0) + 1

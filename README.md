@@ -69,9 +69,9 @@ Saya mengimplementasikan checklist tugas secara bertahap, dengan menyesuaikan te
 ### 2. Buatlah bagan yang berisi request client ke web aplikasi berbasis Django beserta responnya dan jelaskan pada bagan tersebut kaitan antara urls.py, views.py, models.py, dan berkas html.
 Berikut diagram sederhana :
 
-![alt text](django.png)
+![alt text](resources/django.png)
 
-![alt text](django2.png)
+![alt text](resources/django2.png)
 
 ### Penjelasan Kaitan Komponen (MVT)
 
@@ -182,10 +182,10 @@ Kita membutuhkan `{% csrf_token %}` untuk mencegah **Cross-Site Request Forgery 
 **f.** **Terakhir**, lakukan **deploy ke PWS**, pastikan konfigurasi (mis. `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`) sudah benar.
 
 ## Postman Screen Shoot
-![alt text](json.png)
-![alt text](jsonID.png)
-![alt text](xml.png)
-![alt text](xmlID.png)
+![alt text](resources/json.png)
+![alt text](resources/jsonID.png)
+![alt text](resources/xml.png)
+![alt text](resources/xmlID.png)
 
 ###  Apakah ada feedback untuk asdos di tutorial 2 yang sudah kalian kerjakan?
 saya ingin tutorial lebih inetraktif/diberi materi sebelum mengerjakan tutorial
@@ -213,3 +213,154 @@ Mozilla. (2025, June 7). *Cross-site request forgery (CSRF)*. MDN Web Docs. http
 OWASP Foundation. (n.d.). *Cross-Site Request Forgery (CSRF) Prevention Cheat Sheet*. OWASP Cheat Sheet Series. https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
 
 OWASP Foundation. (n.d.). *SameSite*. https://owasp.org/www-community/SameSite
+
+
+# Readme Tugas 4
+
+## TUGAS 4 — AUTENTIKASI, SESSION, COOKIES (toko-bola-ega)
+
+### 1. APA ITU DJANGO AuthenticationForm?
+
+`AuthenticationForm` (django.contrib.auth.forms.AuthenticationForm) adalah form bawaan untuk LOGIN: menyediakan field `username` dan `password`, memvalidasi kredensial via auth backend, lalu kita panggil `login(request, user)` untuk membuat sesi (Django Software Foundation, n.d.-a). ([Django Project][1])
+  KELEBIHAN:
+* Siap pakai, validasi standar, terintegrasi dengan `authenticate()`/`login()` dan session (Django Software Foundation, n.d.-a). ([Django Project][1])
+* Password hashing dan mekanisme auth ditangani core Django, bukan form.
+  KEKURANGAN:
+* Default hanya `username`+`password`; login via email/identifier lain perlu subclass/override (Django Software Foundation, n.d.-b). ([Django Project][2])
+* Tidak menyertakan remember-me / 2FA—harus ditambah sendiri.
+
+2. AUTENTIKASI VS OTORISASI (dan bagaimana Django melakukannya)
+
+Autentikasi = verifikasi identitas “siapa kamu”. Otorisasi = izin “kamu boleh apa”. Django memisahkan konsep ini di sistem auth/permissions; `AuthenticationMiddleware` mengisi `request.user`, `login()` membuat session; pembatasan akses via `@login_required`/permissions (Django Software Foundation, n.d.-c; Microsoft, 2025a). ([Django Project][3])
+Di toko-bola-ega:
+
+  * `login_user` memakai `AuthenticationForm`; jika valid → `login()` lalu set cookie demo `last_login`.
+  * `logout_user` memanggil `logout()` dan menghapus cookie `last_login`.
+  * View penting (`show_main`, `create_product`) dibungkus `@login_required` (Django Software Foundation, n.d.-c). ([Django Project][3])
+
+### 3. SESSION vs COOKIES untuk menyimpan state
+   SESSION (server-side)
+
+Plus: data sensitif tidak di klien; bisa di-invalidate server; cocok untuk info autentikasi/otorisasi. Django menyimpan data di server, klien hanya membawa session ID (Django Software Foundation, n.d.-d). ([Django Project][4])
+Minus: butuh storage (DB/Redis/file); scaling perlu shared store; tetap perlu mitigasi (rotasi session saat login, dsb).
+  COOKIES (client-side)
+Plus: sederhana, tanpa storage server; cocok untuk preferensi ringan (mis. `last_login` demo).
+Minus: ukuran kecil, dapat dibaca/manipulasi klien; perlu flag keamanan (`Secure`, `HttpOnly`, `SameSite`) dan HTTPS (Mozilla, 2025a; 2025b). ([MDN Web Docs][5])
+
+### 4. APAKAH COOKIES “AMAN DEFAULT”? RISIKO & CARA DJANGO MENGATASI
+
+* Cookies tidak otomatis aman. Risiko: XSS (jika tidak `HttpOnly`), sniffing (jika tidak `Secure`/tanpa HTTPS), dan CSRF (browser mengirim cookie otomatis) (Mozilla, 2025a; OWASP Foundation, n.d.-a). ([MDN Web Docs][6])
+Mitigasi (production):
+  `SESSION_COOKIE_HTTPONLY=True`, `SESSION_COOKIE_SECURE=True`, `CSRF_COOKIE_SECURE=True`, `SESSION_COOKIE_SAMESITE='Lax'` + HTTPS (Mozilla, 2025a; OWASP Foundation, n.d.-b). ([MDN Web Docs][6])
+  Gunakan CSRF middleware dan `{% csrf_token %}`; Django’s CSRF mengeluarkan token & cookie rahasia; nilai secret diganti saat user login (Django Software Foundation, n.d.-e; n.d.-f). ([Django Project][7]) Prinsip: taruh hal sensitif di session server-side; gunakan cookies hanya untuk data non-sensitif.
+
+5. STEP-BY-STEP YANG SAYA LAKUKAN DI “TOKO-BOLA-EGA” (BUKAN SEKADAR IKUT TUTORIAL)
+   A. Persiapan database
+   `python manage.py makemigrations && python manage.py migrate`
+  B. REGISTER, LOGIN, LOGOUT
+  Register: `UserCreationForm`; POST valid → buat user → redirect login.
+   Login: `AuthenticationForm` → POST valid:
+  1. `user = form.get_user()`
+  2. `login(request, user)` (membuat session)
+  3. set cookie demo `last_login`
+  4. redirect ke katalog
+     (Django Software Foundation, n.d.-c; Microsoft, 2025b). ([Django Project][3])
+     Logout: `logout(request)` lalu hapus cookie `last_login`.
+  C. Proteksi halaman dengan `@login_required`
+  Tambahkan pada `show_main`, `create_product`, dll. (Django Software Foundation, n.d.-c). ([Django Project][3])
+  D. Menghubungkan Product ↔ User (owner)
+   Model: `user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)` → makemigrations + migrate.
+   View `create_product`:
+
+  ```
+  form = ProductForm(request.POST or None)
+  if form.is_valid() and request.method == "POST":
+      product = form.save(commit=False)
+      product.user = request.user
+      product.save()
+      return redirect("main:show_main")
+  ```
+  Catatan: produk lama (user=NULL) tak muncul di “My Products”; backfill via shell atau buat ulang.
+  E. Filter “All Products” vs “My Products”
+  `show_main`:
+
+  ```
+  filter_type = request.GET.get("filter", "all")
+  products = (Product.objects.filter(user=request.user)
+              if filter_type == "my" else Product.objects.all())
+  ```
+  `main.html`:
+
+  ```
+  <a href="?filter=all"><button type="button">All Products</button></a>
+  <a href="?filter=my"><button type="button">My Products</button></a>
+  ```
+
+F. Menampilkan identitas user + last\_login
+
+* Context `student = { npm, name/username, kelas, last_login }`
+* Template:
+
+  ```
+  {% include 'main/student_info.html' %}
+  <h5>Sesi terakhir login: {{ student.last_login }}</h5>
+  ```
+
+G. Keamanan cookies (opsi production)
+
+* Di `settings.py` (saat deploy):
+
+  ```
+  SESSION_COOKIE_SECURE = True
+  CSRF_COOKIE_SECURE = True
+  SESSION_COOKIE_HTTPONLY = True
+  SESSION_COOKIE_SAMESITE = 'Lax'
+  ```
+  Jalankan site via HTTPS; gunakan `{% csrf_token %}` di semua form POST (Django Software Foundation, n.d.-f; Mozilla, 2025a). ([Django Project][8])
+  H. Uji fungsional
+  Buat 2 akun; masing-masing buat 2–3 Product.
+  “All” menampilkan semua; “My” menampilkan milik akun aktif saja.
+  Header (NPM/Name/Username/Class) dan “Sesi terakhir login” tampil sekali di atas daftar.
+
+6. RANGKUMAN JAWABAN (SINGKAT)
+`AuthenticationForm`: form login bawaan; pro—cepat, terintegrasi; kontra—fitur lanjut perlu kustom (Django Software Foundation, n.d.-a, n.d.-b). ([Django Project][1])
+Autentikasi ≠ Otorisasi; Django: authenticate/login + session untuk autentikasi; permissions/@login\_required untuk otorisasi (Django Software Foundation, n.d.-c; Microsoft, 2025a). ([Django Project][3])
+Session vs Cookies: session = server-side; cookies = client-side (Django Software Foundation, n.d.-d; Mozilla, 2025a). ([Django Project][4])
+Cookies tidak otomatis aman; gunakan `Secure`/`HttpOnly`/`SameSite`, HTTPS, dan CSRF middleware/`{% csrf_token %}` (Mozilla, 2025a; Django Software Foundation, n.d.-f; OWASP Foundation, n.d.-a). ([MDN Web Docs][6])
+
+## REFERENCES — APA 7
+
+```
+Django Software Foundation. (n.d.-a). Using the Django authentication system. In Django documentation (v5.2). Retrieved September 23, 2025, from https://docs.djangoproject.com/en/5.2/topics/auth/default/
+
+Django Software Foundation. (n.d.-b). Customizing authentication in Django. In Django documentation (v5.2). Retrieved September 23, 2025, from https://docs.djangoproject.com/en/5.2/topics/auth/customizing/
+
+Django Software Foundation. (n.d.-c). User authentication in Django (overview). In Django documentation (v5.2). Retrieved September 23, 2025, from https://docs.djangoproject.com/en/5.2/topics/auth/
+
+Django Software Foundation. (n.d.-d). How to use sessions. In Django documentation (v5.2). Retrieved September 23, 2025, from https://docs.djangoproject.com/en/5.2/topics/http/sessions/
+
+Django Software Foundation. (n.d.-e). Cross Site Request Forgery protection (reference). In Django documentation (v5.2). Retrieved September 23, 2025, from https://docs.djangoproject.com/en/5.2/ref/csrf/
+
+Django Software Foundation. (n.d.-f). How to use Django’s CSRF protection (how-to). In Django documentation (v5.2). Retrieved September 23, 2025, from https://docs.djangoproject.com/en/5.2/howto/csrf/
+
+Microsoft. (2025a, March 21). Authentication vs. authorization — Microsoft identity platform. Microsoft Learn. https://learn.microsoft.com/en-us/entra/identity-platform/authentication-vs-authorization
+
+Microsoft. (2025b, March 28). Authentication and authorization in Azure App Service. Microsoft Learn. https://learn.microsoft.com/en-us/azure/app-service/overview-authentication-authorization
+
+Mozilla. (2025a, September 1). Using HTTP cookies (guide). MDN Web Docs. https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cookies
+
+Mozilla. (2025b, September 1). Set-Cookie header (reference). MDN Web Docs. https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie
+
+OWASP Foundation. (n.d.-a). Session Management Cheat Sheet. OWASP Cheat Sheet Series. Retrieved September 23, 2025, from https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+
+OWASP Foundation. (n.d.-b). Cookie Theft Mitigation Cheat Sheet. OWASP Cheat Sheet Series. Retrieved September 23, 2025, from https://cheatsheetseries.owasp.org/cheatsheets/Cookie_Theft_Mitigation_Cheat_Sheet.html
+```
+
+[1]: https://docs.djangoproject.com/en/5.2/topics/auth/default/ "Using the Django authentication system"
+[2]: https://docs.djangoproject.com/en/5.2/topics/auth/customizing/ "Customizing authentication in Django"
+[3]: https://docs.djangoproject.com/en/5.2/topics/auth/ "User authentication in Django"
+[4]: https://docs.djangoproject.com/en/5.2/topics/http/sessions/ "How to use sessions"
+[5]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/ "Set-Cookie header - HTTP - MDN - Mozilla"
+[6]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/"Using HTTP cookies - MDN - Mozilla"
+[7]: https://docs.djangoproject.com/en/5.2/ref/csrf/ "Cross Site Request Forgery protection"
+[8]: https://docs.djangoproject.com/en/5.2/howto/csrf/ "How to use Django's CSRF protection"
