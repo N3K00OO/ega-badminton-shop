@@ -328,7 +328,7 @@ Autentikasi ≠ Otorisasi; Django: authenticate/login + session untuk autentikas
 Session vs Cookies: session = server-side; cookies = client-side (Django Software Foundation, n.d.-d; Mozilla, 2025a). ([Django Project][4])
 Cookies tidak otomatis aman; gunakan `Secure`/`HttpOnly`/`SameSite`, HTTPS, dan CSRF middleware/`{% csrf_token %}` (Mozilla, 2025a; Django Software Foundation, n.d.-f; OWASP Foundation, n.d.-a). ([MDN Web Docs][6])
 
-## REFERENCES — APA 7
+## REFERENCES
 
 ```
 Django Software Foundation. (n.d.-a). Using the Django authentication system. In Django documentation (v5.2). Retrieved September 23, 2025, from https://docs.djangoproject.com/en/5.2/topics/auth/default/
