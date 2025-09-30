@@ -364,3 +364,158 @@ OWASP Foundation. (n.d.-b). Cookie Theft Mitigation Cheat Sheet. OWASP Cheat She
 [6]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/"Using HTTP cookies - MDN - Mozilla"
 [7]: https://docs.djangoproject.com/en/5.2/ref/csrf/ "Cross Site Request Forgery protection"
 [8]: https://docs.djangoproject.com/en/5.2/howto/csrf/ "How to use Django's CSRF protection"
+
+
+# Tugas 4
+
+### 1. Urutan prioritas (specificity) CSS selector
+
+Urutan prioritas dari **paling kuat → paling lemah**:
+
+1. `!important` 
+2. **Inline style** pada elemen, mis. `<div style="...">`.
+3. **ID selector**: `#id`.
+4. **Class / attribute / pseudo-class**: `.btn`, `[type="text"]`, `:hover`, `:focus`.
+5. **Type / pseudo-element**: `div`, `h1`, `::before`, `::marker`.
+6. **Universal**: `*`.
+
+Jika spesifisitas sama, **aturan yang ditulis paling akhir** (paling bawah / dimuat terakhir) yang berlaku (*source order*).
+Tips:
+
+* Tingkatkan spesifisitas dengan **class** ketimbang memakai `!important`.
+* Konsisten dengan utilitas (mis. Tailwind) atau metodologi seperti **BEM** supaya tidak terjadi “perang” spesifisitas.
+
+---
+
+### 2. Mengapa responsive design penting? (dengan contoh)
+
+Pengguna mengakses web dari berbagai ukuran layar (HP, tablet, laptop, monitor ultrawide). Tanpa layout responsif:
+
+* konten dapat meluber/terpotong,
+* teks & tombol susah dibaca/di-tap,
+* UX buruk → bounce rate naik.
+
+**Contoh sudah responsif**
+Marketplace/blog modern: layout menyesuaikan lebar, gambar adaptif, navigasi berubah jadi **hamburger** di mobile, grid menjadi 1 kolom di HP dan 3 kolom di desktop.
+
+**Contoh belum responsif (gambaran umum)**
+Dashboard generasi lama yang “mengunci” lebar 1024px—di HP harus **zoom & geser horizontal**; tabel melebihi layar, navbar tidak beradaptasi.
+
+**Cara menerapkan singkat**
+
+* Gunakan unit fleksibel (`%`, `vw`, `minmax()`, `flex`, `grid`),
+* Media query / utilitas responsif (Tailwind: `sm:`, `md:`, `lg:`),
+* Gambar responsif (`max-width: 100%`, `object-cover`).
+
+---
+
+### 3. Perbedaan **margin**, **border**, dan **padding** + implementasi
+
+* **Margin**: ruang **di luar** border → jarak antar elemen.
+* **Border**: garis **pembatas** elemen.
+* **Padding**: ruang **di dalam** border → jarak konten ke border.
+
+Contoh:
+
+```css
+.card {
+  /* jarak kartu dengan elemen lain */
+  margin: 16px;
+
+  /* garis pinggir kartu */
+  border: 1px solid #e5e7eb;
+
+  /* ruang di dalam kartu agar konten tidak mepet border */
+  padding: 12px;
+
+  border-radius: 12px;
+  box-sizing: border-box; /* ukuran lebih mudah diprediksi */
+}
+```
+
+Catatan: *margin collapsing* bisa terjadi pada margin vertikal antar blok.
+
+---
+
+### 4. Konsep **Flexbox** & **Grid Layout** + kegunaannya
+
+**Flexbox (1 dimensi)** — mengatur **baris ATAU kolom**
+
+* Properti utama: `display:flex`, `flex-direction`, `justify-content`, `align-items`, `gap`, `flex-wrap`, `flex:1`.
+* Cocok untuk: navbar, baris tombol, center vertikal/horizontal, list yang mengalir.
+
+Contoh:
+
+```css
+.nav { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+```
+
+**CSS Grid (2 dimensi)** — mengatur **baris DAN kolom**
+
+* Properti utama: `display:grid`, `grid-template-columns/rows`, `gap`, `grid-area`, `place-items`.
+* Cocok untuk: layout halaman, galeri, dashboard, kartu produk multi-kolom.
+
+Contoh:
+
+```css
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+```
+
+**Kapan pakai yang mana?**
+Flex untuk deretan satu arah + alignment; Grid untuk komposisi 2D (baris & kolom) yang lebih kompleks.
+
+---
+
+### 5. Step-by-step implementasi di proyek ini (MEM)
+
+Ringkasan konkret yang saya kerjakan bareng kamu:
+
+1. **Login jadi card rapi**
+   Mengubah hero + form terpisah menjadi **satu card** dengan header “Welcome back” dan gaya ungu; fokus pada form & aksesibilitas.
+
+2. **Aksen ungu konsisten**
+   Mengganti kelas ke `bg-violet-600`/`hover:bg-violet-700` untuk tombol & pill. State aktif “All/My Product” diberi **solid violet**, nonaktif outline ungu.
+
+3. **Filter “All / My Product” accessible**
+   Menghindari ekspresi logika dalam `{{ }}`; pakai boolean dari view (`is_all_active`, `is_my_active`) untuk `aria-pressed` dan kelas aktif.
+
+4. **Navbar kategori** (Jerseys, Balls, Trainers, Protectors, Clearance, Misc / Others)
+
+   * Menetapkan `CATEGORY_CHOICES` di **module-level** `models.py`.
+   * Menampilkan **pills** kategori di navbar dan **memusatkannya** memakai grid 3 kolom (`1fr auto 1fr`) → brand kiri, kategori **tengah**, aksi kanan.
+
+5. **“Add Product” CTA**
+
+   * Menambahkan tombol **Add Product** di navbar (desktop & mobile).
+   * Menambah **kartu “+ List product for sale”** sebagai tile pertama di grid ketika user login (shortcut ke halaman create).
+
+6. **Dropdown Product Type yang benar**
+
+   * Field `category` memakai `choices=CATEGORY_CHOICES` → `<select>` otomatis di form.
+   * Menyimpan **kode** kategori (mis. `jerseys`) di DB; menampilkan label dengan `{{ obj.get_category_display }}`.
+   * Khusus `misc`: menampilkan input teks opsional (custom note). *Opsional*: prepend note ke `description` agar mudah dicari.
+
+7. **Filtering kategori yang robust**
+
+   * Filter berdasarkan **kode** (`category=code`).
+   * **Backward-compatible** untuk data lama yang mungkin menyimpan **label** dengan `Q(category__iexact=label)`.
+   * Untuk `misc`, mengikutkan kategori lama yang tak terdaftar.
+
+8. **Styling form tanpa `add_class` error**
+
+   * Menghindari error `Invalid filter: 'add_class'` dengan memindahkan kelas Tailwind ke **widgets** di `forms.py` (atau alternatif: pakai `django-widget-tweaks` + `{% load widget_tweaks %}`).
+
+9. **Perbaikan `NameError: CATEGORY_CHOICES`**
+
+   * Memastikan konstanta didefinisikan **sebelum** dipakai (module-level), memperbaiki method `categories()` agar mengembalikan nilai yang benar.
+
+10. **PowerShell & manage.py**
+
+    * Menjalankan migrasi tanpa `&&` (pakai `;` atau jalankan satu-satu).
+    * (Opsional) `manage.py` yang memuat `.env` dan memberi warning jika tidak dalam virtualenv.
+
+
