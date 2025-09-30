@@ -1,56 +1,113 @@
 {% extends 'base.html' %}
+{% load static %}
+{% block title %}Product Catalog{% endblock %}
 {% block content %}
-{% include 'main/student_info.html' %}
-<h1>Product Catalog</h1>
 
-<div class="filters" style="margin: 8px 0;">
-  <a href="?filter=all"><button type="button">All Products</button></a>
-  <a href="?filter=my"><button type="button">My Products</button></a>
-</div>
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 pb-12">
+  <!-- student info + filters -->
+  <div class="grid md:grid-cols-3 gap-6">
+    <div class="md:col-span-2">
+      <!-- Filters -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-2 shadow-soft">
+        <span class="text-sm text-gray-500 mr-2">Filter:</span>
+
+       <a href="?filter=all"
+        aria-pressed="{{ is_all_active|yesno:'true,false' }}"
+        class="px-3 py-1.5 rounded-full text-sm font-medium border transition
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400
+                {% if is_all_active %}
+                  bg-violet-600 text-white border-violet-600 shadow-[0_0_0_3px] shadow-violet-100
+                {% else %}
+                  text-violet-700 border-violet-200 hover:border-violet-400 hover:bg-violet-50
+                {% endif %}">
+        All product
+      </a>
+
+      <a href="?filter=my"
+        aria-pressed="{{ is_my_active|yesno:'true,false' }}"
+        class="px-3 py-1.5 rounded-full text-sm font-medium border transition
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400
+                {% if is_my_active %}
+                  bg-violet-600 text-white border-violet-600 shadow-[0_0_0_3px] shadow-violet-100
+                {% else %}
+                  text-violet-700 border-violet-200 hover:border-violet-400 hover:bg-violet-50
+                {% endif %}">
+        My Product
+      </a>
 
 
-<p>
-  <a href="{% url 'main:logout' %}">
-    <button>Logout</button>
-  </a>
-  
-  <a href="{% url 'main:login' %}">
-    <button>Login</button>
-  </a>
-
-  <a href="{% url 'main:create_product' %}">
-    <button>+ Add Product</button>
-  </a>
-</p>
-
-<hr>
-<h5>Sesi terakhir login: {{ last_login }}</h5>
-<hr>
-
-{% if not products %}
-  <p>No products yet.</p>
-{% else %}
-  {% for p in products %}
-    <div>
-      <h2><a href="{% url 'main:show_product' p.id %}">{{ p.name }}</a></h2>
-      <p>
-        <b>{{ p.category }}</b>{% if p.is_featured %} | <b>Featured</b>{% endif %} |
-        <i>{{ p.created_at|date:"d M Y H:i" }}</i> | Views: {{ p.views }}
-      </p>
-
-      {% if p.thumbnails %}
-        <img src="{{ p.thumbnails }}" alt="thumb" width="150" height="100"><br>
-      {% endif %}
-
-      <p>{{ p.description|truncatewords:25 }}</p>
-      <p>Brand: {{ p.brand }} | Price: Rp{{ p.price }}</p>
-
-      <p>
-        <a href="{% url 'main:show_product' p.id %}"><button>Detail</button></a>
-      </p>
-     
+        <span class="ml-auto text-xs text-gray-500">Last login: {{ last_login }}</span>
+      </div>
     </div>
-    <hr>
-  {% endfor %}
-{% endif %}
+
+    <!-- Student card -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-4 shadow-soft">
+      {% include 'main/student_info.html' %}
+    </div>
+  </div>
+
+  <!-- list / grid -->
+  {% if not products %}
+    <div class="bg-white border border-gray-200 rounded-2xl p-12 text-center mt-6 shadow-soft">
+      <img src="{% static 'image/no-products.png' %}" alt="" class="w-24 h-24 mx-auto mb-3 opacity-80">
+      <p class="text-gray-600">No products yet. Be the first to add one!</p>
+    </div>
+  {% else %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+      {% for p in products %}
+        <article class="group relative bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-soft hover:shadow-xl transition">
+          {% if p.is_featured %}
+            <!-- violet ribbon -->
+            <div class="absolute top-3 left-3 z-10 px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-800 border border-violet-200">
+              Featured
+            </div>
+          {% endif %}
+
+          {% if p.thumbnails %}
+            <div class="aspect-[16/9] bg-gray-100">
+              <img src="{{ p.thumbnails }}" alt="{{ p.name }}" class="w-full h-full object-cover group-hover:scale-[1.02] transition">
+            </div>
+          {% endif %}
+
+          <div class="p-5">
+            <h2 class="text-lg font-semibold text-gray-900">
+              <a href="{% url 'main:show_product' p.id %}" class="hover:text-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded">
+                {{ p.name }}
+              </a>
+            </h2>
+            <p class="text-sm text-gray-600 mt-1">
+              {{ p.category }} • <i>{{ p.created_at|date:"d M Y H:i" }}</i> • Views: {{ p.views }}
+            </p>
+
+            <p class="text-gray-700 mt-3 line-clamp-2">{{ p.description }}</p>
+            <p class="text-sm text-gray-600 mt-2">
+              Brand: {{ p.brand }} • Price: <span class="font-semibold text-violet-700">Rp{{ p.price }}</span>
+            </p>
+
+            <div class="mt-4 flex items-center justify-between">
+              <a href="{% url 'main:show_product' p.id %}"
+                 class="inline-flex items-center px-3 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-700
+                        focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">
+                Detail
+              </a>
+
+              {% if user.is_authenticated and p.user_id == user.id %}
+                <div class="flex gap-3 text-sm">
+                  <a href="{% url 'main:edit_product' p.id %}"
+                     class="text-gray-700 hover:text-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded">
+                    Edit
+                  </a>
+                  <form method="POST" action="{% url 'main:delete_product' p.id %}">
+                    {% csrf_token %}
+                    <button class="text-red-600 hover:text-red-700">Delete</button>
+                  </form>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+</main>
 {% endblock %}

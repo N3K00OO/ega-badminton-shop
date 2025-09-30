@@ -1,32 +1,63 @@
 {% extends 'base.html' %}
-
-{% block meta %}
-<title>Login</title>
-{% endblock meta %}
-
+{% block title %}Login{% endblock %}
 {% block content %}
-<div class="login">
-  <h1>Login</h1>
 
-  <form method="POST" action="">
-    {% csrf_token %}
-    <table>
-      {{ form.as_table }}
-      <tr>
-        <td></td>
-        <td><input class="btn login_btn" type="submit" value="Login" /></td>
-      </tr>
-    </table>
-  </form>
+<!-- Centered card with gradient header -->
+<section class="min-h-[calc(100vh-6rem)] flex items-center justify-center py-10 px-4">
+  <div class="w-full max-w-xl bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
 
-  {% if messages %}
-  <ul>
-    {% for message in messages %}
-    <li>{{ message }}</li>
-    {% endfor %}
-  </ul>
-  {% endif %} Don't have an account yet?
-  <a href="{% url 'main:register' %}">Register Now</a>
-</div>
+    <!-- Card header (gradient) -->
+    <div class="relative p-8">
+      <div class="absolute inset-0 bg-gradient-to-br from-violet-700 via-violet-500 to-fuchsia-500"></div>
+      <div class="relative">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-white drop-shadow">Welcome back</h1>
+        <p class="text-white/90 mt-1">Sign in to manage your products and reviews.</p>
+      </div>
+      <!-- subtle glow -->
+      <div class="pointer-events-none absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/20 blur-3xl"></div>
+    </div>
 
-{% endblock content %}
+    <!-- Card body -->
+    <div class="px-6 sm:px-8 pb-8 pt-6">
+
+      {% if form.non_field_errors %}
+        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+
+      <form method="POST" class="space-y-5">
+        {% csrf_token %}
+
+        <label class="block">
+          <span class="text-sm text-gray-700">Username</span>
+          <div class="mt-1">{{ form.username }}</div>
+          {% for error in form.username.errors %}
+            <p class="text-sm text-red-600 mt-1">{{ error }}</p>
+          {% endfor %}
+        </label>
+
+        <label class="block">
+          <span class="text-sm text-gray-700">Password</span>
+          <div class="mt-1">{{ form.password }}</div>
+          {% for error in form.password.errors %}
+            <p class="text-sm text-red-600 mt-1">{{ error }}</p>
+          {% endfor %}
+        </label>
+
+        <button class="w-full inline-flex items-center justify-center px-4 py-3 rounded-lg bg-violet-600 text-white font-semibold hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-400">
+          Sign In
+        </button>
+      </form>
+
+      <div class="mt-6 flex items-center justify-between text-sm">
+        <a href="{% url 'main:show_main' %}" class="text-gray-600 hover:text-violet-700">← Back to Home</a>
+        <div class="text-gray-600">
+          New here?
+          <a href="{% url 'main:register' %}" class="text-violet-700 font-semibold hover:underline">Create account</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
