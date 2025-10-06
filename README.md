@@ -519,3 +519,190 @@ Ringkasan konkret yang saya kerjakan bareng kamu:
     * (Opsional) `manage.py` yang memuat `.env` dan memberi warning jika tidak dalam virtualenv.
 
 
+# Tugas 6
+
+
+## 1 Perbedaan **synchronous request** dan **asynchronous request**
+
+Permintaan **synchronous** adalah pola klasik web: ketika pengguna mengirim form atau mengeklik tautan, browser mengirim request lalu **menunggu** respons untuk **merender ulang** seluruh halaman. Ini sederhana karena alur kontrolnya sepenuhnya di server (Django menyiapkan HTML utuh), tetapi dari sisi pengguna terasa “berat”: halaman “berkedip”, posisi scroll hilang, dan untuk perubahan kecil tetap memindahkan banyak data. Sebaliknya, permintaan **asynchronous** (AJAX) mengirim request lewat JavaScript **di latar belakang** tanpa mengganti halaman. Kamu tinggal memperbarui bagian DOM yang berubah, menampilkan *loading/error/empty state*, atau memunculkan *toast* — hasilnya UX jauh lebih mulus dan responsif. Contoh paling jelas ada di halaman katalog kamu: grid produk di-*render* ulang **tanpa reload** hanya dengan memanggil API JSON, bukan mengunduh halaman HTML baru.
+
+```js
+// (main.html) — asinkron: muat grid produk tanpa reload halaman
+async function loadProducts() {
+  gridAJAX.innerHTML = `<div class="col-span-full text-center text-gray-600">Loading…</div>`;
+  const mine = (getParam('filter') === 'my') ? '&mine=1' : '';
+  const q    = getParam('q') ? `&q=${encodeURIComponent(getParam('q'))}` : '';
+  try {
+    const res  = await fetch(`/api/products/?${mine}${q}`, {
+      headers: { "Accept":"application/json" },
+      credentials: 'same-origin'
+    });
+    const data = await res.json();
+    gridAJAX.innerHTML = data.items.length
+      ? data.items.map(cardHTML).join('')
+      : `<div class="col-span-full text-center text-gray-600">No products yet.</div>`;
+  } catch {
+    gridAJAX.innerHTML = `<div class="col-span-full text-center text-red-600">Failed to load.</div>`;
+  }
+}
+```
+
+
+## 2 Bagaimana **AJAX** bekerja di Django (alur request–response)?
+
+Pada level konsep, **aksi pengguna** (misalnya klik “Create”, “Edit”, “Delete”, atau “Login”) memicu JavaScript di browser. JavaScript lalu memanggil **endpoint Django** (biasanya diawali `/api/...`) menggunakan `fetch()` dengan **header** yang benar (terutama `Content-Type: application/json` dan **`X-CSRFToken`**), serta **`credentials: 'same-origin'`** supaya cookie sesi terkirim. **URLconf** memetakan alamat ke **view** Django yang memproses logika (validasi form, cek kepemilikan, CRUD database, autentikasi). Alih-alih mengembalikan HTML, view akan membalas **JSON** (`JsonResponse`) berisi `ok: true/false`, `items`, atau `errors`. Begitu JSON diterima, JavaScript **mengubah DOM**: menutup modal, menyusun ulang kartu produk, menampilkan *toast*, atau mengarahkan pengguna. Dengan cara ini, **siklusnya pendek** dan halaman tidak pernah di-reload penuh.
+
+Kamu sudah menerapkan pola ini untuk **Create/Edit/Delete** produk melalui modal:
+
+```js
+// (main.html) — CREATE
+createForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(createForm);
+  const payload = Object.fromEntries(fd.entries());
+  payload.is_featured = payload.is_featured === 'true';
+  try {
+    const res = await fetch("{% url 'main:api_products' %}", {
+      method:'POST',
+      credentials: 'same-origin',
+      headers: Object.assign({'Content-Type':'application/json'}, withCsrf()),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) { closeCreate(); toast('Product created', 'success'); reloadProducts?.(); }
+    else { toast('Create failed', 'error'); }
+  } catch { toast('Network error', 'error'); }
+});
+
+// (main.html) — EDIT (PATCH sebagian kolom)
+editForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(editForm);
+  const payload = Object.fromEntries(fd.entries());
+  if (payload.price) payload.price = Number(payload.price);
+  payload.is_featured = payload.is_featured === 'true';
+  try {
+    const res = await fetch(`/api/products/${editingId}/`, {
+      method:'PATCH',
+      credentials: 'same-origin',
+      headers: Object.assign({'Content-Type':'application/json'}, withCsrf()),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) { closeEdit(); toast('Product updated', 'success'); reloadProducts?.(); }
+    else { toast('Update failed', 'error'); }
+  } catch { toast('Network error', 'error'); }
+});
+
+// (main.html) — DELETE
+confirmDelete.addEventListener('click', async () => {
+  try {
+    const res = await fetch(`/api/products/${deletingId}/`, {
+      method:'DELETE',
+      credentials: 'same-origin',
+      headers: withCsrf()
+    });
+    const data = await res.json();
+    if (data.ok) { closeConfirm(); toast('Product deleted', 'success'); reloadProducts?.(); }
+    else { toast('Delete failed', 'error'); }
+  } catch { toast('Network error', 'error'); }
+});
+```
+
+Perhatikan tiga hal yang sudah benar di implementasimu: (1) `credentials: 'same-origin'` supaya cookie sesi terkirim, (2) **CSRF** di header via helper `withCsrf()`, dan (3) respon server diparsing sebagai JSON lalu dipakai untuk update UI.
+
+---
+
+## 3 Keuntungan menggunakan **AJAX** dibanding render biasa di Django
+
+Keuntungan utama AJAX di proyekmu adalah **performa UX** dan **kontrol antarmuka**. Karena tidak ada *full reload*, pengguna tidak kehilangan konteks (scroll, input yang sudah diisi, state terbuka), dan hanya bagian yang berubah yang di-*render* ulang. Ini tampak jelas saat kamu memanfaatkan **modal Create/Edit/Delete**: form mengirim data via `fetch`, lalu pada sukses kamu memanggil `reloadProducts?.()` untuk **memperbarui grid**; semuanya terjadi tanpa berpindah halaman. Di saat yang sama, kamu bebas menampilkan *loading*, *empty state*, dan *error state* di tempat yang tepat (lihat `loadProducts()` mengisi “Loading…”, fallback error “Failed to load.”, atau “No products yet.”); hal ini **mustahil** dilakukan sepresisi itu jika setiap aksi memicu *full reload*. Selain itu, pola “Django kirim **data** (JSON), front-end yang memutuskan **bagaimana** menampilkan” membuat endpoint API-mu **reusable** dan mudah dipakai ulang di halaman lain.
+
+---
+
+## 4 Cara memastikan **keamanan** saat menggunakan AJAX untuk Login & Register di Django
+
+Kuncinya: **CSRF, cookie sesi, metode benar, dan HTTPS**. Di **klien**, kamu sudah mengirim **`credentials: 'same-origin'`** agar cookie sesi ikut, lalu menyertakan **`X-CSRFToken`** (helper `withCsrf()` di `base.html`). Di **server**, pastikan `CsrfViewMiddleware` aktif (default), view login/register hanya menerima **POST** (`@require_http_methods(["POST"])`), autentikasi pakai **`authenticate()`** lalu **`login()`**, dan seluruh transmisi lewat **HTTPS** agar kredensial terenkripsi. Pesan kesalahan sebaiknya **umum** (“username atau password salah”), bukan indikasi detail yang memudahkan enumerasi akun. Jika aplikasi dipublikasikan, pertimbangkan **rate limiting / lockout** untuk menahan brute-force. Implementasi login AJAX-mu sendiri sudah rapi: kamu menambahkan `Accept: 'application/json'`, `Content-Type: 'application/json'`, *handle* `403 CSRF`, dan **tidak** menyimpan password di sisi klien.
+
+```html
+<!-- (base.html) — helper global -->
+<script>
+(function(){
+  function getCookie(name){
+    const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return v ? v.pop() : '';
+  }
+  window.csrfToken = getCookie('csrftoken');
+  window.withCsrf  = (headers={}) => Object.assign({"X-CSRFToken": window.csrfToken}, headers);
+})();
+</script>
+```
+
+```js
+// (login.html) — login AJAX aman + flash toast setelah redirect
+const res = await fetch("{% url 'main:api_login' %}", {
+  method: 'POST',
+  credentials: 'same-origin',
+  headers: Object.assign({
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  }, withCsrf()),
+  body: JSON.stringify(payload)
+});
+let data = null; try { data = await res.json(); } catch {}
+if (res.status === 403) { toast('Forbidden (CSRF). Refresh this page.', 'error'); return; }
+if (data && data.ok) {
+  sessionStorage.setItem('flash_toast_msg', 'Login successful, welcome back!');
+  sessionStorage.setItem('flash_toast_type', 'success');
+  window.location.href = "{% url 'main:show_main' %}";
+  return;
+}
+```
+
+
+```html
+<!-- (navbar.html) — tautan logout memakai handler AJAX (lihat base.html) -->
+<a href="{% url 'main:logout' %}" data-ajax-logout class="px-3 py-2 rounded-lg bg-violet-600 text-white">Logout</a>
+```
+
+```js
+// (base.html) — handler logout → set flash → redirect ke login
+document.addEventListener('click', async (e) => {
+  const el = e.target.closest('[data-ajax-logout]');
+  if (!el) return;
+  e.preventDefault();
+  const res = await fetch("{% url 'main:api_logout' %}", {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: withCsrf()
+  });
+  const data = await res.json().catch(() => ({}));
+  if (data.ok) {
+    sessionStorage.setItem('flash_toast_msg', 'Logout successful');
+    sessionStorage.setItem('flash_toast_type', 'success');
+    window.location.href = "{% url 'main:login' %}";
+  } else { toast('Logout failed', 'error'); }
+});
+```
+
+---
+
+## 5 Bagaimana **AJAX** mempengaruhi User Experience (UX) pada website?
+
+AJAX memberikan **rasa cepat** dan **kontinuitas**: konten berubah seketika tanpa “kedip” reload, posisi scroll tetap, dan form/serpihan state tidak hilang. Kamu juga bisa memberi **umpan balik mikro** yang jelas: *loading indicator* saat menunggu, *empty state* ketika data kosong, *error state* saat gagal, dan *toast* ketika berhasil. Semua ini memperjelas apa yang sedang terjadi dan mengurangi friksi pengguna. Implementasimu sudah menunjukkan best-practice ini: `loadProducts()` menulis “Loading…”, jatuh ke “Failed to load.” saat error, atau “No products yet.” saat kosong; handler Create/Edit/Delete memunculkan *toast* lalu memanggil `reloadProducts?.()` agar kartu produk **auto-refresh**; login/logout memakai **flash toast** setelah redirect sehingga user langsung tahu aksi mereka sukses. Satu hal untuk dipertahankan adalah **aksesibilitas** dan **riwayat**: jika nantinya kamu menambah filter/pencarian yang memodifikasi URL, kamu sudah benar menulis `history.replaceState()` dan *listen* ke `popstate` agar tombol Back/Forward tetap bermakna.
+
+```js
+// (main.html) — pola UX: loading → sukses/empty → error + integrasi tombol refresh
+document.getElementById('btn-refresh')?.addEventListener('click', () => {
+  window.reloadProducts?.();
+  toast?.('Refreshed!', 'success');
+});
+
+// gridAJAX diisi loading lebih dulu, lalu hasil fetch menentukan empty/sukses/error
+gridAJAX.innerHTML = `<div class="col-span-full text-center text-gray-600">Loading…</div>`;
+```
+
+---
+
+
+
+

@@ -1,22 +1,31 @@
-import datetime
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from django.http import HttpResponse, HttpResponseForbidden, HttpResponseRedirect
-from django.core import serializers
 
+import datetime
+from django.utils.timezone import localtime, now
+import json
+
+
+from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.core import serializers
+from django.db.models import Q
+from django.forms import ModelForm
+from django.http import (
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+    HttpResponseRedirect,
+    JsonResponse,
+)
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_http_methods
 
 from main.forms.forms import ProductForm
-from django.contrib import messages
-
-from main.models import Product
-
-from django.contrib.auth.decorators import login_required
-from django.db.models import Q
-from django.shortcuts import render
 from .models import Product
+
+
 
 
 
@@ -189,7 +198,129 @@ def delete_product(request, id):
 
     return render(request, "main/confirm_delete.html", {"product": product})
 
+
+class ProductAPIForm(ModelForm):
+    class Meta:
+        model = Product
+        fields = ["category", "name", "brand", "price", "thumbnails", "description", "is_featured"]
+
+def _to_dict(obj, request):
+    return obj.as_dict(request_user=request.user)
  
+@require_http_methods(["GET", "POST"])
+def api_products(request):
+    if request.method == "GET":
+        qs = Product.objects.select_related("user").order_by("-created_at")
+        if request.GET.get("mine") == "1" and request.user.is_authenticated:
+            qs = qs.filter(user=request.user)
+        q = request.GET.get("q")
+        if q:
+            from django.db.models import Q
+            qs = qs.filter(Q(name__icontains=q) | Q(brand__icontains=q) | Q(description__icontains=q))
+        return JsonResponse({"ok": True, "count": qs.count(), "items": [_to_dict(p, request) for p in qs]})
+
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False, "errors": {"auth": ["Login required"]}}, status=401)
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return HttpResponseBadRequest("Invalid JSON")
+    form = ProductAPIForm(payload)
+    if form.is_valid():
+        product = form.save(commit=False)
+        product.user = request.user
+        product.save()
+        return JsonResponse({"ok": True, "item": _to_dict(product, request)}, status=201)
+    return JsonResponse({"ok": False, "errors": form.errors}, status=400)
+
+@require_http_methods(["GET", "PATCH", "DELETE"])
+def api_product_detail(request, pk):
+    product = get_object_or_404(Product, pk=pk)   # always bound
+
+    if request.method == "GET":
+        if request.GET.get("track") == "1":
+            product.increment_views()
+        return JsonResponse({"ok": True, "item": product.as_dict(request_user=request.user)})
+
+    # Mutations: auth + ownership
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False, "errors": {"auth": ["Login required"]}}, status=401)
+    if product.user_id != request.user.id:
+        return JsonResponse({"ok": False, "errors": {"perm": ["Not your product"]}}, status=403)
+
+    if request.method == "PATCH":
+        # strict JSON parse (return 400 "Invalid JSON" on bad body)
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+        except Exception:
+            return HttpResponseBadRequest("Invalid JSON")
+
+        # normalize/coerce incoming types
+        if "is_featured" in payload:
+            v = payload["is_featured"]
+            payload["is_featured"] = True if v in (True, "true", "True", 1, "1", "on") else False
+        if "price" in payload and payload["price"] not in (None, ""):
+            try:
+                payload["price"] = int(payload["price"])
+            except Exception:
+                return JsonResponse({"ok": False, "errors": {"price": ["Must be an integer"]}}, status=400)
+
+        # emulate partial update by merging with current instance
+        fields = ["category", "name", "brand", "price", "thumbnails", "description", "is_featured"]
+        data_full = {f: getattr(product, f) for f in fields}
+        data_full.update({k: v for k, v in payload.items() if k in fields})
+
+        form = ProductAPIForm(data_full, instance=product)   # no partial=True (Django form)
+        if form.is_valid():
+            updated = form.save()  # <-- DO NOT reassign "product"
+            return JsonResponse({"ok": True, "item": updated.as_dict(request_user=request.user)})
+        return JsonResponse({"ok": False, "errors": form.errors}, status=400)
+
+    # DELETE
+    product.delete()
+    return JsonResponse({"ok": True})
 
 
+@require_http_methods(["POST"])
+def api_login(request):
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return HttpResponseBadRequest("Invalid JSON")
 
+    user = authenticate(
+        request,
+        username=payload.get("username", ""),
+        password=payload.get("password", ""),
+    )
+    if user is None:
+        return JsonResponse({"ok": False, "errors": {"__all__": ["Invalid credentials"]}}, status=400)
+
+    login(request, user)
+    resp = JsonResponse({"ok": True})
+    resp.set_cookie("last_login", localtime(now()).strftime("%d %b %Y %H:%M"), samesite="Lax")
+    return resp
+
+
+@require_http_methods(["POST"])
+def api_logout(request):
+    from django.contrib.auth import logout
+    logout(request)
+    resp = JsonResponse({"ok": True})
+    resp.delete_cookie("last_login")
+    return resp
+
+
+@require_http_methods(["POST"])
+def api_register(request):
+    from django.contrib.auth.forms import UserCreationForm
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return HttpResponseBadRequest("Invalid JSON")
+    form = UserCreationForm(payload)
+    if form.is_valid():
+        user = form.save()
+        login(request, user)
+        return JsonResponse({"ok": True})
+    return JsonResponse({"ok": False, "errors": form.errors}, status=400)
