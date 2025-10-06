@@ -65,4 +65,28 @@
   sel.addEventListener('change', toggleMisc);
   toggleMisc();
 </script>
+
+<script>
+(function () {
+  const form = document.getElementById('product-form');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const payload = Object.fromEntries(fd.entries());
+    const res = await fetch('{% url "main:api_products" %}', {
+      method: 'POST',
+      headers: Object.assign({'Content-Type':'application/json'}, withCsrf()),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      location.href = "{% url 'main:show_main' %}";
+    } else {
+      alert('Validation error:\\n' + JSON.stringify(data.errors, null, 2));
+    }
+  });
+})();
+</script>
+
 {% endblock %}
