@@ -140,21 +140,65 @@
 (function(){
   const form = document.querySelector('form');
   if (!form) return;
+
+  const submitBtn = form.querySelector('button[type="submit"]') || form.querySelector('button');
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+
     const fd = new FormData(form);
     const payload = Object.fromEntries(fd.entries());
-    const res = await fetch('{% url "main:api_register" %}', {
-      method: 'POST',
-      headers: Object.assign({'Content-Type':'application/json'}, withCsrf()),
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data.ok) location.href = "{% url 'main:show_main' %}";
-    else alert('Register failed:\\n' + JSON.stringify(data.errors, null, 2));
+
+    // simple loading state
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.dataset._label = submitBtn.innerHTML;
+      submitBtn.innerHTML = 'Creating account…';
+    }
+
+    try {
+      const res = await fetch('{% url "main:api_register" %}', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: Object.assign({'Content-Type':'application/json'}, (typeof withCsrf === 'function' ? withCsrf() : {})),
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (data && data.ok) {
+        // <-- key bit: set flash toast for the next page load
+        sessionStorage.setItem('flash_toast_msg', 'Account created — welcome!');
+        sessionStorage.setItem('flash_toast_type', 'success');
+
+        // api_register logs the user in; go to main
+        window.location.href = "{% url 'main:show_main' %}";
+        return;
+      }
+
+      if (data && data.errors) {
+        // show a friendly toast and keep them on the page
+        toast('Registration failed. Please check the form.', 'error');
+        console.warn('Register errors:', data.errors);
+        return;
+      }
+
+      // fallback to normal POST if something odd happens
+      form.submit();
+
+    } catch (err) {
+      toast('Network error — please try again.', 'error');
+      console.error(err);
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = submitBtn.dataset._label || 'Daftar';
+      }
+    }
   });
 })();
 </script>
+
 
 
 {% endblock content %}
